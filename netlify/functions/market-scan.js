@@ -142,6 +142,9 @@ function extractListingDetail(html, ref) {
   const descMatch = html.match(/property="og:description"\s+content="([^"]+)"/i);
   if (descMatch) detail.long_desc = descMatch[1];
 
+  const imageMatch = html.match(/property="og:image"\s+content="([^"]+)"/i);
+  if (imageMatch) detail.image_url = imageMatch[1];
+
   const suburbFromSlug = ref.slug.split('-').slice(-2).join(' ');
   detail.suburb = suburbFromSlug.replace(/\b\w/g, c => c.toUpperCase());
 
@@ -190,6 +193,14 @@ exports.handler = async function (event) {
   try {
     const body = event.body ? JSON.parse(event.body) : {};
     const previousIds = new Set(body.previousIds || []);
+    // Separate baseline: ids we've actually fetched a detail page for.
+    // Falls back to previousIds for backwards compatibility with the
+    // current PropFlow client, but that means on the FIRST run after this
+    // deploy, everything currently "known" will be treated as already
+    // enriched (no detail re-fetch) even though the old version never
+    // actually enriched most of it. Clear propflow_portfolio_payload /
+    // whatever localStorage key holds the old baseline once, so this
+    // function starts both passes from a clean slate.
     // Pass { "forceFull": true } once after deploying this version to force
     // every currently-live listing through enrichment again, instead of
     // trusting the old baseline (which never actually enriched most of what
